@@ -159,7 +159,10 @@ export function spread(items, k){
  * while the model is cold. Exploring is not politeness — an item close to
  * things you have already rated cannot move the weights. */
 export function rank(items, model, rated, opts = {}){
-  const explore = opts.explore ?? Math.max(0, Math.min(1.6, 12 / Math.max(1, model.n)));
+  /* Capped at 1.0, not 1.6. At n=8 the old bonus was worth more than the entire
+   * spread of predictions, so the "recommendations" were really just a diversity
+   * sample wearing predicted scores. Exploration should tilt the ranking, not own it. */
+  const explore = opts.explore ?? Math.max(0, Math.min(1.0, 8 / Math.max(1, model.n)));
   const seen = rated.map(r => r.x);
   const dist = (a,b) => Math.hypot(...a.map((v,j) => v - b[j]));
   return items.map(it => {

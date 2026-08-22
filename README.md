@@ -18,7 +18,7 @@ Four domains, one engine:
 
 | | |
 |---|---|
-| **Screen** | 60 titles scored on 8 axes. Genre is deliberately not one of them — "anime" contains both *Mushishi* and *Mob Psycho*, so it predicts nothing. |
+| **Screen** | 91 titles scored on 10 axes. Genre is deliberately not one of them — "anime" contains both *Mushishi* and *Slime*, so the label predicts nothing. |
 | **Ride** | A 13-drill motorcycle curriculum where every level is gated on **logged evidence of a named drill**, not on mileage and not on reading. |
 | **Craft** | A pursuit portfolio judged on what it *spans*, with recommendations produced by gap analysis rather than by list. |
 | **Travel** | Trips with real itineraries and a post-trip debrief, which is the only part that predicts anything about the next one. |
@@ -35,7 +35,31 @@ queue, before it is watched; calibration compares those frozen predictions again
 actually happened. Rating something retroactively teaches the model but does not test it,
 and the app keeps the two apart.
 
-Cold start uses greedy maximin spread: the ten titles furthest apart in the eight axes.
+### Two axes that were not there on day one
+
+The first eight axes were built for prestige film and could not separate the owner's 9s from
+his 5s. **Sincerity** (ironic ↔ earnest) and **Progression** (static ↔ visible ladder) can, and
+they were added from his own account of why *Suits* and *Billions* failed for him — "too serious,
+not fun" — against a top tier of *Re:Zero*, *Slime* and *Akame ga Kill*. Sincerity now carries
+the largest weight in the fitted model.
+
+### Mode: engaged vs comfort
+
+Every rating carries a mode. **Comfort watches are excluded from the fit.** Three rewatches of
+*Arrested Development* is the strongest raw signal in the log and the most misleading — it
+measures what the show is *for* (something to put on in a rut), not whether he likes that kind
+of thing. Fitting on it teaches the model the opposite of the truth.
+
+### Format is a budget, not a taste
+
+About one film every four months and one series a year. That constraint lives in the ranking
+layer as **rationed slots** — one film pick, one series pick — rather than as an axis, because
+"is it animated" would otherwise absorb variance belonging to Sincerity and Progression.
+
+Cold start uses greedy maximin spread over the medium actually watched: the ten anime furthest
+apart in the ten axes. Weights only sharpen in the region the ratings occupy, so spreading
+calibration across prestige film would sharpen the model where he goes once a quarter and
+leave it blurry everywhere he lives.
 Ten ratings there are worth roughly forty random ones, because near-identical titles cannot
 move the weights. The recommender blends predicted score with information gain, weighted
 toward information while the model is cold.

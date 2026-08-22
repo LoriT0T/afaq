@@ -12,14 +12,21 @@ import { CATALOGUE, AXES, DRILLS, HOBBIES, HDIMS, DESTS, TAXES, CONDITIONS, LICE
 export const allTitles = () => [...CATALOGUE, ...S.state().custom];
 export const title = id => allTitles().find(t => t.id === id);
 
+/* Comfort watches are excluded from the fit on purpose. Three rewatches of a show he
+ * describes as "not really my thing — my burnout watch" is the strongest raw signal in
+ * the log and the most misleading one: it measures what the show is FOR, not whether he
+ * likes that kind of thing. Fitting on it would teach the model the opposite of the truth. */
+export const engagedWatches = () => S.watched().filter(w => (w.mode || 'engaged') !== 'comfort');
+export const comfortWatches = () => S.watched().filter(w => w.mode === 'comfort');
+
 export function ratedSamples(){
-  return S.watched().map(w => ({ w, t:title(w.titleId) })).filter(p => p.t)
+  return engagedWatches().map(w => ({ w, t:title(w.titleId) })).filter(p => p.t)
     .map(p => ({ x:p.t.x, y:p.w.score, id:p.t.id, date:p.w.done || p.w.on }));
 }
 export function screenModel(){ return T.fit(ratedSamples(), AXES.length); }
 
 export function screenCalibration(){
-  return T.calibration(S.watched().map(w => ({ pred:w.pred, actual:w.score, date:w.done || w.on })));
+  return T.calibration(engagedWatches().map(w => ({ pred:w.pred, actual:w.score, date:w.done || w.on })));
 }
 
 /* Filter out anything already dealt with, plus anything carrying an advisory
@@ -42,10 +49,37 @@ export function recommendScreen(opts = {}){
     .map(r => ({ ...r, why: T.explain(m, r.it.x, AXES) }));
 }
 
+/* How much of each medium he actually consumes, from his own account on 2026-08-22:
+ * mainly anime, about one film every four months, about one series a year.
+ *
+ * This is a BUDGET, not a taste. Modelling it as an axis would be wrong — it would
+ * let "is it animated" absorb variance that belongs to Sincerity and Progression.
+ * Modelling it as nothing would be worse: a recommender that ignores it keeps
+ * surfacing films at the rate of a person who watches films. So it lives here, in
+ * the ranking layer, where it can be seen and changed. */
+export const DIET = { anime:{ every:'a few weeks', n:10 }, film:{ every:'4 months', n:1 }, tv:{ every:'a year', n:1 } };
+
+/* The rationed slots: one film and one series, ranked but deliberately singular. */
+export function rationed(){
+  const out = {};
+  for(const k of ['film','tv','doc']){
+    const r = recommendScreen({ kind:k, n:1 })[0];
+    if(r) out[k] = r;
+  }
+  return out;
+}
+
 /* The cold-start set: maximally spread titles, so the first handful of ratings
- * identify the weights instead of confirming each other. */
-export function calibrationSet(k = 10){
-  return T.spread(screenPool(), k);
+ * identify the weights instead of confirming each other.
+ *
+ * Drawn from the medium he actually watches, not from the whole catalogue. Weights
+ * are only identified in the region of the space the ratings occupy, and spending
+ * ten calibration ratings on prestige film sharpens the model in a region he visits
+ * once a quarter while leaving it blurry everywhere he actually lives. Spread WITHIN
+ * anime is the useful spread. */
+export function calibrationSet(k = 10, kind = 'anime'){
+  const pool = screenPool({ kind });
+  return T.spread(pool.length >= k ? pool : screenPool(), k);
 }
 
 /* A queue entry that has sat unwatched long enough to be a decision rather than

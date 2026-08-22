@@ -3,6 +3,7 @@
  * against the log that produced it. */
 
 const KEY = 'afaq.v1';
+const AXES_N = 10;   // kept in step with data.js AXES; only used to pad old custom titles
 
 const BLANK = {
   v: 1,
@@ -11,7 +12,7 @@ const BLANK = {
     onboarded:false, weather:false, lat:null, lon:null
   },
   custom:  [],  // user-added titles: {id,t,yr,k,len,x[8],why}
-  watch:   [],  // {id,titleId,added,status,pred,score,on,note,ep}
+  watch:   [],  // {id,titleId,added,status,pred,score,mode,on,note,ep}
   rides:   [],  // {id,date,mi,mins,kinds[],conds[],drills[],road,note,near,bike}
   maint:   [],  // {id,date,what,mi,note}
   lic:     {},  // licenceId -> ISO date passed
@@ -33,6 +34,9 @@ function load(){
 function migrate(s){
   s.set = Object.assign(structuredClone(BLANK.set), s.set||{});
   for(const r of s.rides){ r.kinds ||= []; r.conds ||= []; r.drills ||= []; }
+  for(const w of s.watch) w.mode ||= 'engaged';
+  // AXES grew from 8 to 10 on 2026-08-22; pad any title the user scored before that
+  for(const c of s.custom) while(c.x.length < AXES_N) c.x.push(.5);
   for(const p of s.pursuits){ p.logs ||= []; }
   for(const t of s.trips){ t.days ||= []; t.debrief ||= null; }
   return s;
@@ -60,7 +64,7 @@ export function stamp(){ if(!S.set.start){ S.set.start = today(); save(); } retu
 export function queue(titleId, pred){
   if(S.watch.some(w => w.titleId === titleId && w.status !== 'dropped')) return null;
   const w = { id:uid(), titleId, added:today(), status:'queue', pred:pred ?? null,
-              score:null, on:null, note:'', ep:'' };
+              score:null, mode:'engaged', on:null, note:'', ep:'' };
   S.watch.unshift(w); save(); return w;
 }
 export const watched  = () => S.watch.filter(w => w.status === 'done' && w.score != null);
@@ -68,10 +72,11 @@ export const inQueue  = () => S.watch.filter(w => w.status === 'queue');
 export const watching = () => S.watch.filter(w => w.status === 'watching');
 export const entry    = titleId => S.watch.find(w => w.titleId === titleId && w.status !== 'dropped');
 export function startWatch(id){ const w = S.watch.find(x => x.id===id); if(w){ w.status='watching'; w.on=today(); save(); } }
-export function rate(id, score, note){
+export function rate(id, score, note, mode){
   const w = S.watch.find(x => x.id === id); if(!w) return;
   w.status = 'done'; w.score = Number(score); w.on = w.on || today();
   w.done = today(); if(note != null) w.note = note;
+  if(mode) w.mode = mode;
   save();
 }
 export function cull(id, reason){
@@ -81,8 +86,24 @@ export function cull(id, reason){
   save();
 }
 export function addCustom(t){
-  const c = { id:'c_'+uid(), t:'', yr:new Date().getFullYear(), k:'film', len:'', x:[.5,.5,.5,.5,.5,.5,.5,.5], why:'', adv:[], custom:true, ...t };
+  const c = { id:'c_'+uid(), t:'', yr:new Date().getFullYear(), k:'film', len:'',
+              x:new Array(AXES_N).fill(.5), why:'', adv:[], custom:true, ...t };
   S.custom.unshift(c); save(); return c;
+}
+
+/* Load a set of already-watched titles. Additive and id-keyed: anything already in
+ * the log is left alone, so this is re-runnable. `pred` stays null because these were
+ * never predicted in advance — they teach the model, they do not test it. */
+export function seedRatings(rows){
+  let n = 0;
+  for(const r of rows){
+    if(S.watch.some(w => w.titleId === r.id)) continue;
+    S.watch.push({ id:uid(), titleId:r.id, added:today(), status:'done', pred:null,
+                   score:Number(r.score), mode:r.mode || 'engaged',
+                   on:today(), done:today(), note:r.note || '', ep:'' });
+    n++;
+  }
+  save(); return n;
 }
 
 /* ---------- ride ---------- */

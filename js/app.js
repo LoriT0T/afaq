@@ -3,7 +3,8 @@ import * as S from './store.js';
 import * as T from './taste.js';
 import * as E from './engine.js';
 import { APP, AXES, ADVISORIES, CATALOGUE, DRILLS, IPSGA, LICENCE, RISK, ROADS,
-         CONDITIONS, ROADKINDS, HOBBIES, HDIMS, DESTS, TAXES, ITEMKINDS } from './data.js';
+         CONDITIONS, ROADKINDS, HOBBIES, HDIMS, DESTS, TAXES, ITEMKINDS,
+         SEED, ATTENTION } from './data.js';
 
 const $ = (s,r=document) => r.querySelector(s);
 const app = $('#app'), nav = $('#nav');
@@ -161,7 +162,7 @@ function vToday(){
 /* =====================================================================
    SCREEN
    ===================================================================== */
-let sKind = '';
+let sKind = 'anime';   // his actual medium; the chips override it
 on('s-kind', d => { sKind = d.k === sKind ? '' : d.k; render(); });
 
 function ttRow(t, pred, why, entry){
@@ -190,13 +191,14 @@ function vScreen(){
   const st = S.state();
   const q = S.inQueue(), wing = S.watching(), stale = E.staleQueue();
   const recs = E.recommendScreen({ kind:sKind, n:10 });
+  const rat = E.rationed();
   const cold = m.n < 12;
   const calSet = cold ? E.calibrationSet(10).filter(t => !st.watch.some(w => w.titleId === t.id)) : [];
   const kinds = [{k:'anime',n:'Anime'},{k:'film',n:'Film'},{k:'tv',n:'TV'},{k:'doc',n:'Documentary'}];
 
   return `
   <h2 class="page">Screen</h2>
-  <p class="lede">Sixty titles scored on eight axes. <b>Genre is deliberately not one of them</b> — “anime” contains both Mushishi and Mob Psycho, so it predicts nothing. The number on the left is what the model thinks you will give it, decided before you watch.</p>
+  <p class="lede">${CATALOGUE.length} titles on ${AXES.length} axes. <b>Genre is deliberately not one of them</b> — “anime” contains both Mushishi and Slime-shaped nation-building, so the label predicts nothing. <b>Sincerity</b> and <b>Progression</b> were added on 22 August because the first eight could not separate your 9s from your 5s and those two can. The number on the left is what the model expects you to give it, decided before you watch.</p>
 
   <div class="card" data-d="screen">
     <div class="row"><div class="grow"><h4>${esc(conf.label)} — ${m.n} rating${m.n===1?'':'s'}</h4>
@@ -205,8 +207,13 @@ function vScreen(){
     <div class="body">${esc(conf.say)}</div>
   </div>
 
+  ${S.state().watch.length === 0 ? `<div class="card acc" data-d="screen" style="margin-top:12px">
+    <h4>Start from what you already told me</h4>
+    <div class="body">Ten titles, scored from your own words — Re:Zero at 10 for three rewatches, Suits and Billions at 5 for “too serious, not fun”. Arrested Development and Sunny load as <b>comfort</b> watches and are held out of the fit.</div>
+    <div class="btns wide" style="margin-top:11px"><button class="btn pri" data-act="seed">Load the ten</button></div></div>` : ''}
+
   ${cold && calSet.length ? `<div class="sect" data-d="screen"><div class="hd"><h3>Calibration set</h3><span class="aux">${m.n}/12</span></div>
-    <p class="lede">These ten are picked to sit as far apart from each other as possible in the eight axes. Rate any you have already seen — ten ratings here are worth roughly forty random ones, because near-identical titles teach the model nothing.</p>
+    <p class="lede">Ten anime picked to sit as far apart from each other as possible in the ${AXES.length} axes. Rate any you have already seen. Ten ratings here are worth roughly forty random ones — near-identical titles teach the model nothing, and <b>the weights only sharpen in the region your ratings occupy</b>, which is why these are anime rather than a spread of the whole shelf.</p>
     <div class="card">${calSet.map(t => `<div class="tt">
       <div class="pr" style="font-size:11px;line-height:1.3;padding-top:4px">${esc(t.k)}</div>
       <div><div class="nm">${esc(t.t)} <span class="yr">${t.yr}</span></div>
@@ -225,10 +232,23 @@ function vScreen(){
   <div class="sect" data-d="screen"><div class="hd"><h3>Recommended</h3>
     <span class="aux">${m.n < 12 ? 'exploring' : 'predicting'}</span></div>
     ${chipsetHTML(kinds, sKind?[sKind]:[], 's-kind')}
-    <p class="hint">Ranked by predicted score <b>plus an exploration bonus</b> that fades as the model warms up. While it is cold it will deliberately offer you things unlike what you have rated — an item close to what it already knows cannot move the weights.</p>
+    <p class="hint">Ranked by predicted score <b>plus an exploration bonus</b> that fades as the model warms up — while it is cold it will deliberately offer things unlike what you have rated, because an item close to what it already knows cannot move the weights. Defaulting to <b>anime</b>: that is what you actually watch, and a list that ignores it is a list you will not use.</p>
     <div class="card" style="margin-top:10px">${recs.length ? recs.map(r => ttRow(r.it, r.pred, r.why, null)).join('')
       : '<div class="empty">Nothing left in the catalogue for this filter.</div>'}</div>
     <div class="btns wide" style="margin-top:10px"><button class="btn" data-act="custom-open">Add your own title</button></div>
+  </div>
+
+  <div class="sect" data-d="screen"><div class="hd"><h3>The rationed slots</h3><span class="aux">by your own rate</span></div>
+    <p class="lede">You watch roughly <b>one film every four months</b> and <b>one series a year</b>. That is a budget, not a taste — so it is handled here rather than being smuggled into the model as an axis. One pick each, not a list.</p>
+    <div class="stack">${Object.entries(rat).map(([k,r]) => `<div class="card" data-d="screen">
+      <div class="row top"><div class="grow">
+        <div class="sb" style="margin-bottom:5px">${kindPill(k)} <span style="color:var(--tx-3);font-size:11.5px">${k==='film'?'your next film — one every 4 months':k==='tv'?'your next series — one a year':'if you want something shorter'}</span></div>
+        <h4>${esc(r.it.t)} <span class="yr" style="color:var(--tx-3);font-weight:400">${r.it.yr}</span></h4>
+        <div class="meta">${esc(r.it.len||'')}${(r.it.adv||[]).length?` · ${esc(r.it.adv.join(', '))}`:''}</div></div>
+        <div class="pr" style="font-family:var(--mono);font-size:17px;color:var(--acc)">${n1(r.pred)}</div></div>
+      <div class="body">${esc(r.it.why)}</div>
+      <div class="btns" style="margin-top:11px"><button class="btn sm" data-act="queue" data-id="${r.it.id}">Queue it</button></div>
+    </div>`).join('')}</div>
   </div>
 
   ${S.watched().length ? `<div class="sect"><div class="hd"><h3>Rated</h3><span class="aux">${S.watched().length}</span></div>
@@ -240,6 +260,22 @@ function vScreen(){
           <div class="sb">${kindPill(t.k)} ${esc(S.human(w.done||w.on))}${err!=null?` · model was ${Math.abs(err)<.5?'right':(err>0?'too harsh':'too generous')} by ${n1(Math.abs(err))}`:''}</div>
           ${w.note?`<div class="rz">${esc(w.note)}</div>`:''}</div><div class="go"></div></div>`;
     }).join('')}</div></div>` : ''}
+
+  ${E.comfortWatches().length ? `<div class="sect"><div class="hd"><h3>Comfort watches</h3>
+    <span class="aux">held out of the fit</span></div>
+    <p class="lede">Logged, counted, and <b>deliberately excluded from the model</b>. A rewatch here measures what the show is <em>for</em> — something to put on in a rut — not whether you like that kind of thing. Fitting on it would teach the model the opposite of the truth.</p>
+    <div class="card">${E.comfortWatches().map(w => { const t = E.title(w.titleId); if(!t) return '';
+      return `<div class="tt"><div class="pr" style="color:var(--tx-2)">${n1(w.score)}<small>COMFORT</small></div>
+        <div><div class="nm" style="color:var(--tx-2)">${esc(t.t)} <span class="yr">${t.yr}</span></div>
+        ${w.note?`<div class="sb">${esc(w.note)}</div>`:''}</div>
+        <div class="go"><button class="btn sm ghost" data-act="mode-flip" data-id="${w.id}">Count it</button></div></div>`;
+    }).join('')}</div></div>` : ''}
+
+  <div class="sect"><div class="hd"><h3>${esc(ATTENTION.t)}</h3></div>
+    <div class="card flat"><div class="body">${esc(ATTENTION.body)}</div>
+      <div class="body" style="color:var(--acc)">${esc(ATTENTION.point)}</div>
+      <div class="body">${esc(ATTENTION.close)}</div></div>
+  </div>
 
   ${st.culled.length ? `<div class="sect"><div class="hd"><h3>Killed</h3><span class="aux">${st.culled.length}</span></div>
     <div class="card">${st.culled.slice(0,12).map(c => { const t = E.title(c.titleId); return `
@@ -264,6 +300,7 @@ on('rate-open', d => {
 });
 function rateSheet(id, t, retro){
   const w = S.state().watch.find(x => x.id === id);
+  rateMode = w?.mode || 'engaged';
   sheet(t?.t || 'Rate', retro
     ? 'Rating something you have already seen. The model learns from it, but it does not count as a prospective check — those only come from things predicted before you watched.'
     : `Predicted <b>${w?.pred!=null?n1(w.pred):'—'}</b>. Score it honestly, not relative to the prediction.`, `
@@ -271,15 +308,36 @@ function rateSheet(id, t, retro){
       <input type="number" id="sc" min="1" max="10" step=".5" value="${w?.score ?? 7.5}"></label>
     <label class="f"><span>Note — what it actually was for you</span>
       <textarea id="nt" placeholder="Optional. One line is enough.">${esc(w?.note||'')}</textarea></label>
+    <label class="f"><span>Which was this</span></label>
+    <div class="chipset">
+      <button class="chip on" id="md-e" data-act="md" data-m="engaged">Engaged — I chose it</button>
+      <button class="chip" id="md-c" data-act="md" data-m="comfort">Comfort — background, a rut</button>
+    </div>
+    <div class="hint">Comfort watches are logged but held out of the model. A show you put on to decompress tells the model nothing about what you want to watch next.</div>
     <div class="btns wide" style="margin-top:12px">
       <button class="btn pri" data-act="rate-save" data-id="${id}" data-retro="${retro?1:0}">Save</button>
       <button class="btn ghost" data-act="close">Cancel</button></div>`);
 }
+let rateMode = 'engaged';
+on('md', d => {
+  rateMode = d.m;
+  $('#md-e').classList.toggle('on', rateMode === 'engaged');
+  $('#md-c').classList.toggle('on', rateMode === 'comfort');
+});
 on('rate-save', d => {
   const sc = Math.max(1, Math.min(10, Number($('#sc').value)||7));
   if(d.retro === '1'){ const w = S.state().watch.find(x => x.id === d.id); if(w) w.pred = null; }
-  S.rate(d.id, sc, $('#nt').value.trim());
-  close(); toast('Logged'); render();
+  S.rate(d.id, sc, $('#nt').value.trim(), rateMode);
+  close(); toast(rateMode === 'comfort' ? 'Logged — held out of the fit' : 'Logged'); render();
+});
+on('mode-flip', d => {
+  const w = S.state().watch.find(x => x.id === d.id);
+  if(w){ w.mode = w.mode === 'comfort' ? 'engaged' : 'comfort'; S.save(); toast('Counted in the fit'); render(); }
+});
+on('seed', () => {
+  const n = S.seedRatings(SEED);
+  S.state().set.onboarded = true; S.save();
+  toast(n ? `${n} loaded` : 'Already loaded'); render();
 });
 on('cull-open', d => {
   const w = S.state().watch.find(x => x.id === d.id);
