@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "afaq",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["/Users/musaed/Projects/afaq/tools/devserver.py", "8125", "/Users/musaed/Projects/afaq"],
+      "port": 8125
+    }
+  ]
+}
