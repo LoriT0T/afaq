@@ -7,6 +7,7 @@
 import * as S from './store.js';
 import * as T from './taste.js';
 import { CATALOGUE, AXES, DRILLS, HOBBIES, HDIMS, DESTS, TAXES, CONDITIONS, LICENCE } from './data.js';
+import { LADDERS } from './ladders.js';
 
 /* ---------- titles ---------- */
 export const allTitles = () => [...CATALOGUE, ...S.state().custom];
@@ -188,6 +189,63 @@ export function portfolio(){
   const moto = HOBBIES.find(h => h.id === 'moto');
   if(S.rides().length && !ps.some(h => h.id === 'moto')) ps.unshift(moto);
   return ps;
+}
+
+/* =====================================================================
+   CRAFT LADDERS — where you actually are in a pursuit.
+
+   Deliberately not a percentage of sessions. A rung is a thing you can do,
+   claimed by you; sessions only decide when you are allowed to claim it. The
+   gate is there for one specific failure: reading a rung, recognising the
+   description, and ticking it. Recognising is not being able to.
+
+   The trial is ungraded on purpose. Judging yourself in the first fortnight of
+   a craft is how people quit one they would have loved, and its length is what
+   the domain says rather than a constant — ten lessons for horse riding, four
+   for swimming, six weeks of shooting twice a week for archery.
+   ===================================================================== */
+export function craftLadder(hobbyId){
+  const L = LADDERS[hobbyId];
+  if(!L) return null;
+  const p = S.pursuit(hobbyId);
+  const logs = p?.logs || [];
+  const marks = p?.marks || {};
+  const n = logs.length;
+
+  const trial = { need:L.trial, done:Math.min(n, L.trial), met:n >= L.trial, say:L.trialSay };
+
+  const rows = L.rungs.map((r, i) => {
+    const at = marks[r.k] || null;
+    /* Claimable in order. A ladder you can tick out of sequence is a checklist,
+       and the sequence is most of what these encode — Ruq'ah before Naskh,
+       falling before climbing, endgames before openings. */
+    const prior = i === 0 ? true : !!marks[L.rungs[i-1].k];
+    return { ...r, i, at, met:!!at, enough:n >= r.need,
+             eligible: !at && prior && n >= r.need && trial.met,
+             blockedBy: at ? null : !trial.met ? 'trial' : !prior ? 'order' : n < r.need ? 'evidence' : null,
+             short: Math.max(0, r.need - n) };
+  });
+
+  const done = rows.filter(r => r.met).length;
+  const next = rows.find(r => !r.met) || null;
+  /* Stage names the ladder itself, so it reads as a place rather than a fraction. */
+  const stage = !L.rungs.length ? { name:'—', say:L.trialSay }
+    : !trial.met ? { name:'Trial', say:L.trialSay }
+    : done === 0 ? { name:'Started', say:'Trial done. The ladder is open — claim a rung when you can actually do it, not when you recognise it.' }
+    : done === rows.length ? { name:'Through the ladder', say:'Every rung claimed. What is left is depth, and depth does not have rungs.' }
+    : { name:rows[done-1].n, say:next ? `Next: ${next.n}.` : '' };
+
+  return { hobbyId, trial, rows, next, done, total:rows.length,
+           sessions:n, hours: logs.reduce((a,b) => a + (b.mins||0), 0) / 60,
+           last: logs[0]?.date || null, defer: L.defer || null, stage,
+           pct: rows.length ? done / rows.length : 0 };
+}
+
+/** Every ladder that is running, most recently practised first. */
+export function craftLadders(){
+  return S.activePursuits()
+    .map(p => craftLadder(p.hobbyId)).filter(Boolean)
+    .sort((a,b) => (b.last || '').localeCompare(a.last || ''));
 }
 
 export function gaps(){

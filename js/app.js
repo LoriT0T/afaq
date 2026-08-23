@@ -600,6 +600,67 @@ on('lic', d => { S.setLic(d.id, !S.state().lic[d.id]); render(); });
 /* =====================================================================
    CRAFT
    ===================================================================== */
+/* The ladder, drawn.
+ *
+ * Only ONE rung is ever expanded — the one you are on. A craft ladder printed in
+ * full is a wall of instructions for a person three years away, and it buries the
+ * single sentence that is actually actionable today. The rest is a strip of pips
+ * you can read in one glance and a fold-out for when you want the whole road.
+ *
+ * The trial gets no rungs at all, by design. Nothing is graded until it is over. */
+function ladderBlock(L, h){
+  if(!L) return '';
+  if(L.defer) return `<div class="body" style="color:var(--tx-3);margin-top:9px">${esc(L.stage.say)}</div>`;
+
+  if(!L.trial.met){
+    const pct = L.trial.need ? L.trial.done / L.trial.need : 0;
+    return `<div style="margin-top:11px">
+      <div class="row" style="align-items:baseline;gap:8px">
+        <span class="chip sm" style="color:var(--warn);border-color:var(--warn)">Trial</span>
+        <span class="meta grow">${L.trial.done} of ${L.trial.need} sessions</span>
+        <span class="meta">${L.trial.need - L.trial.done} to go</span>
+      </div>
+      <div class="bar thin" style="margin-top:7px"><i class="warn" style="width:${Math.round(pct*100)}%"></i></div>
+      <div class="body" style="color:var(--tx-3);margin-top:8px">${esc(L.trial.say)}</div>
+    </div>`;
+  }
+
+  const pips = L.rows.map(r => {
+    const cls = r.met ? 'on' : r.eligible ? 'now' : 'off';
+    return `<i class="${cls}" title="${esc(r.n)}"></i>`;
+  }).join('');
+
+  const r = L.next;
+  const body = !r
+    ? `<div class="body" style="color:var(--crf);margin-top:9px">${esc(L.stage.say)}</div>`
+    : `<div class="rung${r.eligible?' up':''}">
+        <div class="row" style="align-items:baseline;gap:8px">
+          <b class="grow">${esc(r.n)}</b>
+          ${r.eligible
+            ? `<button class="btn sm pri" data-act="p-rung" data-id="${h.id}" data-k="${esc(r.k)}">I can do this</button>`
+            : `<span class="meta">${r.blockedBy === 'evidence' ? `${r.short} more session${r.short===1?'':'s'}` : 'locked'}</span>`}
+        </div>
+        <p><span class="lb">Here when</span> ${esc(r.is)}</p>
+        <p><span class="lb">Do</span> ${esc(r.do)}</p>
+        <p style="color:var(--bad)"><span class="lb">Trap</span> ${esc(r.fail)}</p>
+        ${r.blockedBy === 'evidence' ? `<p class="note">Claimable at ${r.need} sessions. The gate is there so a rung cannot be ticked because you recognised the description.</p>` : ''}
+      </div>`;
+
+  return `<div style="margin-top:11px">
+    <div class="row" style="align-items:center;gap:9px">
+      <div class="pips">${pips}</div>
+      <span class="meta grow">${L.done} of ${L.total}</span>
+    </div>
+    ${body}
+    <details class="acc-d" style="margin-top:9px;background:var(--bg-2)"><summary>The whole ladder</summary>
+      <div class="in">${L.rows.map((x,i) => `<p style="opacity:${x.met?1:x.eligible?1:.62}">
+        <b>${i+1}. ${esc(x.n)}</b>${x.met?` <span class="chip sm" style="color:var(--crf);border-color:var(--crf)">${esc(S.human(x.at))}</span>`:` <span class="meta">${x.need} sessions</span>`}<br>
+        <span style="color:var(--tx-2)">${esc(x.is)}</span>
+        ${x.met?` <button class="btn sm ghost" data-act="p-rung" data-id="${h.id}" data-k="${esc(x.k)}">Undo</button>`:''}</p>`).join('')}
+      </div></details>
+  </div>`;
+}
+
 function vCraft(){
   const ps = E.portfolio(), g = E.gaps(), recs = E.recommendHobbies(6);
   const st = S.state();
@@ -632,10 +693,12 @@ function vCraft(){
       const mins = p.logs.reduce((s,l) => s + l.mins, 0);
       const last = p.logs[0]?.date;
       const cold = (S.since(last || p.started) ?? 0) >= 14;
+      const L = E.craftLadder(h.id);
       return `<div class="card ${p.state==='trial'?'flat':''}" data-d="craft">
-        <div class="row"><div class="grow"><h4>${esc(h.n)} <span class="chip sm">${p.state}</span></h4>
+        <div class="row"><div class="grow"><h4>${esc(h.n)} <span class="chip sm">${p.state}</span>${L&&L.total&&L.trial.met?` <span class="chip sm" style="color:var(--crf);border-color:var(--crf)">${esc(L.stage.name)}</span>`:''}</h4>
           <div class="meta">${n1(mins/60)} h logged · ${p.logs.length} session${p.logs.length===1?'':'s'}${last?` · last ${esc(S.human(last))}`:' · never logged'}</div></div></div>
         ${cold ? `<div class="body" style="color:var(--warn)">Nothing logged in ${S.since(last||p.started)} days.${p.state==='trial'?' A trial that runs indefinitely is not a trial.':''}</div>`:''}
+        ${ladderBlock(L, h)}
         <div class="btns" style="margin-top:11px">
           <button class="btn sm pri" data-act="p-log" data-id="${h.id}">Log time</button>
           ${p.state==='trial'?`<button class="btn sm" data-act="p-state" data-id="${h.id}" data-s="active">Commit</button>`:''}
@@ -679,6 +742,13 @@ on('p-log', d => {
       <button class="btn ghost" data-act="close">Cancel</button></div>`);
 });
 on('p-log-save', d => { S.logPursuit(d.id, $('#pm').value, $('#pn').value.trim()); close(); toast('Logged'); render(); });
+on('p-rung', d => {
+  const had = (S.pursuit(d.id)?.marks || {})[d.k];
+  S.markRung(d.id, d.k);
+  const L = E.craftLadder(d.id);
+  toast(had ? 'Unclaimed' : L.next ? `Next: ${L.next.n}` : 'Through the ladder');
+  render();
+});
 
 /* =====================================================================
    TRAVEL

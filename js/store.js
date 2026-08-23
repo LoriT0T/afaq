@@ -16,7 +16,7 @@ const BLANK = {
   rides:   [],  // {id,date,mi,mins,kinds[],conds[],drills[],road,note,near,bike}
   maint:   [],  // {id,date,what,mi,note}
   lic:     {},  // licenceId -> ISO date passed
-  pursuits:[],  // {id,hobbyId,state,started,note,logs:[{date,mins,note}]}
+  pursuits:[],  // {id,hobbyId,state,started,note,logs:[{date,mins,note}],marks:{rungKey:date}}
   trips:   [],  // {id,name,destId,place,from,to,status,budget,note,days[],debrief}
   places:  [],  // {id,name,country,date,rating,again,note}
   culled:  []   // {id,titleId,date,reason}
@@ -37,7 +37,7 @@ function migrate(s){
   for(const w of s.watch) w.mode ||= 'engaged';
   // AXES grew from 8 to 10 on 2026-08-22; pad any title the user scored before that
   for(const c of s.custom) while(c.x.length < AXES_N) c.x.push(.5);
-  for(const p of s.pursuits){ p.logs ||= []; }
+  for(const p of s.pursuits){ p.logs ||= []; p.marks ||= {}; }
   for(const t of s.trips){ t.days ||= []; t.debrief ||= null; }
   return s;
 }
@@ -146,6 +146,20 @@ export const activePursuits = () => S.pursuits.filter(p => p.state === 'active' 
 export function logPursuit(hobbyId, mins, note){
   const p = pursuit(hobbyId); if(!p) return null;
   p.logs.unshift({ date:today(), mins:Number(mins)||0, note:note||'' }); save(); return p;
+}
+
+/* A rung is CLAIMED, never accrued. Sessions gate when you may claim one — they
+   never award it — because the whole objection this app has to hobby trackers is
+   that they count instead of measure. Fifty hours of the same mistake is fifty
+   hours of the same mistake. The date is kept rather than a boolean so the ladder
+   can show how long each stage actually took, which is the only honest picture of
+   how slow a craft really is. */
+export function markRung(hobbyId, key, on){
+  const p = pursuit(hobbyId); if(!p) return null;
+  p.marks ||= {};
+  if(on === false || (on === undefined && p.marks[key])) delete p.marks[key];
+  else p.marks[key] = today();
+  save(); return p;
 }
 
 /* ---------- travel ---------- */
