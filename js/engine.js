@@ -235,7 +235,11 @@ export function craftLadder(hobbyId){
     : done === rows.length ? { name:'Through the ladder', say:'Every rung claimed. What is left is depth, and depth does not have rungs.' }
     : { name:rows[done-1].n, say:next ? `Next: ${next.n}.` : '' };
 
-  return { hobbyId, trial, rows, next, done, total:rows.length,
+  /* The name travels with the ladder. Dīwān reads these to surface a claimable
+     rung, and making the hub import HOBBIES just to resolve an id would be a
+     second consumer of this app's data layout. */
+  return { hobbyId, n: HOBBIES.find(h => h.id === hobbyId)?.n || hobbyId,
+           trial, rows, next, done, total:rows.length,
            sessions:n, hours: logs.reduce((a,b) => a + (b.mins||0), 0) / 60,
            last: logs[0]?.date || null, defer: L.defer || null, stage,
            pct: rows.length ? done / rows.length : 0 };
