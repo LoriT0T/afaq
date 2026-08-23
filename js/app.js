@@ -121,6 +121,7 @@ function render(){
   /* Posters fill in after paint. Decoration must never be on the critical path of
      drawing a list — the row is useful the moment it exists, picture or not. */
   ART.hydrate(app);
+  ART.hydratePlaces(app);
   const navView = view === 'trip' ? 'travel' : view;
   nav.innerHTML = VIEWS.map(v =>
     `<button data-act="go" data-to="${v.id}" class="${v.id===navView?'on':''}"><span class="g">${v.g}</span><span class="l">${v.l}</span></button>`).join('');
@@ -786,7 +787,8 @@ function vTravel(){
     <span class="aux">${m.n >= 5 ? 'model + constraints' : `${m.n}/5 debriefs — constraints only`}</span></div>
     <p class="hint">Ranked on season fit now, how good it is on a bike weighted by your <b>actual ladder position</b> (${Math.round(ready*100)}%), cost, and — once five trips have been debriefed — your travel model. Alpine passes are a bad recommendation at stage one, so they are not made.</p>
     ${chipsetHTML(regions, tRegion?[tRegion]:[], 't-region')}
-    <div class="stack" style="margin-top:10px">${recs.map(r => `<div class="card" data-d="travel">
+    <div class="stack" style="margin-top:10px">${recs.map(r => `<div class="card dest" data-d="travel">
+      <div class="dest-img" data-place="${r.d.id}" data-q="${esc(r.d.n + ' ' + r.d.c + ' landscape')}"></div>
       <div class="row top"><div class="grow"><h4>${esc(r.d.n)}</h4>
         <div class="meta">${esc(r.d.c)} · ${r.d.days} days · ${'£'.repeat(r.d.cost)}${r.d.ride?` · ${'★'.repeat(r.d.ride)} on a bike`:''}</div></div>
         <button class="btn sm" data-act="trip-open" data-id="${r.d.id}">Plan</button></div>
@@ -827,7 +829,9 @@ function vTrip(){
     <button class="btn ghost danger" data-act="trip-kill" data-id="${t.id}">Delete</button>
   </div>
 
-  ${dest ? `<div class="card" data-d="travel" style="margin-top:12px"><h4>${esc(dest.n)}</h4>
+  ${dest ? `<div class="card dest" data-d="travel" style="margin-top:12px">
+    <div class="dest-img tall" data-place="${dest.id}" data-q="${esc(dest.n + ' ' + dest.c + ' landscape')}"></div>
+    <h4>${esc(dest.n)}</h4>
     <div class="body">${esc(dest.why)}</div>
     <div class="meta">Best window: ${esc(dest.when)}</div></div>` : ''}
 

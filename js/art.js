@@ -280,3 +280,61 @@ export async function hydrate(root = document) {
     img.onerror = () => {};
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   PLACES — Pexels, for the travel destinations.
+
+   Same philosophy as the posters above: decoration, never on the critical
+   path, cached hard, and a transient failure is never cached as "no image".
+   Pexels is the one source here because destinations are places rather than
+   works — there is no IMDb for the Lake District. The key is a client-side
+   key by design: Pexels' free tier is per-key rate limiting, not a secret,
+   and the alternative is a proxy server for wallpaper.
+   ══════════════════════════════════════════════════════════════════ */
+const PEXELS_KEY = 'zdZkFzT5JGk1mX02XMV7yvEVptHP3JVsTdPFxQmoUAbIxF8yW19lZgY4';
+const PLACE_KEY = 'afaq.art.places';
+
+const readPlaces = () => { try { return JSON.parse(localStorage.getItem(PLACE_KEY) || '{}'); } catch { return {}; } };
+const writePlaces = c => { try { localStorage.setItem(PLACE_KEY, JSON.stringify(c)); } catch { /* full */ } };
+
+async function placeImage(id, query) {
+  const cache = readPlaces();
+  if (cache[id] !== undefined) return cache[id];
+  try {
+    const r = await fetch('https://api.pexels.com/v1/search?query=' + encodeURIComponent(query)
+      + '&per_page=1&orientation=landscape', { headers: { Authorization: PEXELS_KEY } });
+    if (!r.ok) return null;                       // rate-limited or down: try again next visit
+    const d = await r.json();
+    const p = d.photos && d.photos[0];
+    /* `landscape` is 1200×627 — right for a card, a tenth of the original. */
+    const url = p ? p.src.landscape : null;
+    const credit = p ? { by: p.photographer, at: p.url } : null;
+    cache[id] = url ? { url, credit } : null;     // a genuine empty result may cache
+    writePlaces(cache);
+    return cache[id];
+  } catch { return null; }
+}
+
+/** Fill destination cards. Markup contract: data-place="<id>" data-q="<search>". */
+export async function hydratePlaces(root = document) {
+  const slots = [...root.querySelectorAll('[data-place]:not([data-place-done])')];
+  for (const el of slots) {
+    el.setAttribute('data-place-done', '1');
+    const got = await placeImage(el.dataset.place, el.dataset.q || el.dataset.place);
+    if (!got || !got.url) continue;
+    const img = new Image();
+    img.src = got.url; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+    img.onload = () => {
+      el.style.backgroundImage = `url("${got.url}")`;
+      el.classList.add('has-img');
+      /* Pexels asks for attribution; it rides in the corner of the card. */
+      if (got.credit) {
+        const c = document.createElement('a');
+        c.className = 'px-credit'; c.href = got.credit.at; c.target = '_blank'; c.rel = 'noopener';
+        c.textContent = got.credit.by;
+        el.appendChild(c);
+      }
+    };
+    img.onerror = () => {};
+  }
+}

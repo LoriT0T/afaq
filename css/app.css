@@ -325,3 +325,17 @@ pre.prompt{background:var(--bg);border:1px solid var(--line);border-radius:var(-
   .rung p{grid-template-columns:1fr;gap:1px}
   .rung .lb{padding-top:0}
 }
+
+/* ── destination imagery (Pexels) ─────────────────────
+   A banner, not a background: the text never sits ON the photo, so the card
+   stays readable whatever the photo turns out to be. */
+.card.dest{overflow:hidden}
+.dest-img{display:none;margin:-15px -15px 12px;height:0;background-size:cover;
+  background-position:center;position:relative;transition:height .3s ease}
+.dest-img.has-img{display:block;height:110px}
+.dest-img.tall.has-img{height:150px}
+.dest-img::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 55%,var(--card))}
+.px-credit{position:absolute;right:7px;bottom:5px;z-index:1;font-size:9px;
+  color:rgba(255,255,255,.75);text-decoration:none;background:rgba(0,0,0,.35);
+  padding:1px 6px;border-radius:999px}
