@@ -288,3 +288,11 @@ pre.prompt{background:var(--bg);border:1px solid var(--line);border-radius:var(-
   font-family:inherit;font-size:13.5px;padding:9px 11px;min-width:0;
 }
 .inp:focus{outline:2px solid var(--acc,#c08a4e);outline-offset:1px}
+
+/* Recall block inside the rate sheet — you are being asked to score something you may
+   have finished a fortnight ago. */
+.recall{display:flex;gap:12px;margin:0 0 14px;align-items:flex-start}
+.recall .po{width:62px;height:90px;flex:none}
+.recall-b{min-width:0;flex:1}
+.recall-b .ov{-webkit-line-clamp:4}
+.recall-b .btn{margin-top:8px;display:inline-block;text-decoration:none}

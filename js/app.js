@@ -32,6 +32,9 @@ function toast(msg){
   setTimeout(() => t.remove(), 2100);
 }
 function sheet(title, sub, html){
+  /* Pictures inside a sheet need filling in as well — hydrate walks whatever root it
+     is given, and the sheet is not inside #app. */
+  setTimeout(() => ART.hydrate(document), 0);
   close();
   const el = document.createElement('div');
   el.className = 'sheet'; el.id = 'sheet';
@@ -83,6 +86,13 @@ document.addEventListener('change', e => {
   ACTS[el.dataset.chg]?.(el.dataset, el);
 });
 on('close', close);
+
+on('omdb', () => {
+  const k = document.querySelector('#omdb-k')?.value.trim();
+  if (!k) { toast('Paste the key first.'); return; }
+  ART.setOmdb(k); render();
+  toast('IMDb connected — posters and ratings will fill in as they load.');
+});
 
 on('tmdb', () => {
   const k = document.querySelector('#tmdb-k')?.value.trim();
@@ -266,7 +276,7 @@ function vScreen(){
     ${stale.length ? `<p class="lede">${stale.length} of these have been waiting over ${E.STALE_DAYS} days. <b>Watch it or kill it with a reason.</b> A queue that only ever grows is not a plan, it is a way of avoiding a decision.</p>` : ''}
     <div class="card">${q.sort((a,b) => (b.pred??0)-(a.pred??0)).map(w => { const t = E.title(w.titleId); return t ? ttRow(t, w.pred, null, w) : ''; }).join('')}</div></div>` : ''}
 
-  ${!ART.hasTmdb() ? `<div class="card acc" data-d="screen" style="margin-top:12px">
+  ${!ART.hasTmdb() && !ART.hasOmdb() ? `<div class="card acc" data-d="screen" style="margin-top:12px">
     <h4>Posters are running on the free fallback</h4>
     <div class="body">Pictures and synopses come from MyAnimeList via Jikan, and Wikipedia
     for everything else. Both are keyless, which is why they are the default — but Jikan
@@ -277,9 +287,18 @@ function vScreen(){
     <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org</a>
     — the v3 key, not the read access token.</div>
     <div class="row" style="margin-top:11px;gap:8px">
-      <input id="tmdb-k" class="inp grow" placeholder="TMDB v3 API key" spellcheck="false">
-      <button class="btn pri" data-act="tmdb">Use it</button>
-    </div></div>` : ''}
+      <input id="omdb-k" class="inp grow" placeholder="OMDb key — IMDb posters and ratings" spellcheck="false">
+      <button class="btn pri" data-act="omdb">Use it</button>
+    </div>
+    <div class="row" style="margin-top:7px;gap:8px">
+      <input id="tmdb-k" class="inp grow" placeholder="or a TMDB v3 key" spellcheck="false">
+      <button class="btn" data-act="tmdb">Use it</button>
+    </div>
+    <div class="hint" style="margin-top:9px">IMDb has no free API of its own and blocks
+    direct requests, so <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener">OMDb</a>
+    is the way to its data — a free key gives the IMDb rating and IMDb's own poster art.
+    <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">TMDB</a>
+    is the alternative and has broader coverage of anime.</div></div>` : ''}
 
   <div class="sect" data-d="screen"><div class="hd"><h3>Recommended</h3>
     <span class="aux">${m.n < 12 ? 'exploring' : 'predicting'}</span></div>
@@ -353,9 +372,25 @@ on('rate-open', d => {
 function rateSheet(id, t, retro){
   const w = S.state().watch.find(x => x.id === id);
   rateMode = w?.mode || 'engaged';
+  const a = t ? ART.cached(t.id) : null;
+  /* Rating something a fortnight after watching it means half-remembering which one it
+     was. The poster and a line of plot are the cheapest possible reminder, and the
+     outside score sits next to yours rather than instead of it. */
+  const recall = t ? `<div class="recall">
+      <div class="po${a && a.img ? ' has-img' : ''}" data-art="${t.id}" data-title="${esc(t.t)}"
+           data-yr="${t.yr || ''}" data-kind="${esc(t.k)}" style="--tint:${ART.tint(t.id)}">
+        ${a && a.img ? `<img src="${esc(a.img)}" alt="">` : `<span>${esc((t.t||'?').trim()[0])}</span>`}</div>
+      <div class="recall-b">
+        <div class="ov" data-ov="${t.id}">${a && a.overview ? esc(a.overview.slice(0, 200)) : ''}</div>
+        <div class="sb src" data-src="${t.id}">${a && (a.score || a.source)
+          ? (a.score ? `<b>${a.score}</b>/10 · ` : '') + esc(a.source || '') : ''}</div>
+        <a class="btn sm ghost" href="${ART.trailerHref(t, a)}" target="_blank" rel="noopener">Trailer</a>
+      </div></div>` : '';
+
   sheet(t?.t || 'Rate', retro
     ? 'Rating something you have already seen. The model learns from it, but it does not count as a prospective check — those only come from things predicted before you watched.'
-    : `Predicted <b>${w?.pred!=null?n1(w.pred):'—'}</b>. Score it honestly, not relative to the prediction.`, `
+    : `Predicted <b>${w?.pred!=null?n1(w.pred):'—'}</b>. Score it honestly, not relative to the prediction.`,
+    recall + `
     <label class="f"><span>Your score — 1 to 10</span>
       <input type="number" id="sc" min="1" max="10" step=".5" value="${w?.score ?? 7.5}"></label>
     <label class="f"><span>Note — what it actually was for you</span>

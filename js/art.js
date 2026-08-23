@@ -97,6 +97,37 @@ async function fromJikan(title, year) {
  */
 const KIND_WORD = { anime: 'anime', tv: 'TV series', film: 'film', doc: 'documentary film' };
 
+/* ── OMDb: the only legitimate route to IMDb ────────────────────────
+   IMDb itself has no free public API — the official one is enterprise — and imdb.com
+   answers 403 to anything that is not a browser, so scraping it is both blocked and
+   against their terms. OMDb is the long-standing third party that republishes IMDb
+   data, it is CORS-clean, and a free key returns both the IMDb rating and IMDb's own
+   poster art. One key, and the pictures genuinely come from IMDb. */
+const OMDB_KEY = () => { try { return localStorage.getItem('afaq.omdb') || ''; } catch { return ''; } };
+export const hasOmdb = () => !!OMDB_KEY();
+export const setOmdb = k => { localStorage.setItem('afaq.omdb', String(k || '').trim()); cache = {}; write(cache); };
+
+async function fromOmdb(title, year, kind) {
+  const key = OMDB_KEY(); if (!key) return null;
+  const type = kind === 'film' || kind === 'doc' ? 'movie' : 'series';
+  const u = `https://www.omdbapi.com/?apikey=${encodeURIComponent(key)}`
+    + `&t=${encodeURIComponent(title)}${year ? `&y=${year}` : ''}&type=${type}`;
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('omdb ' + r.status);
+  const j = await r.json();
+  if (j.Response === 'False') return null;
+  const rating = parseFloat(j.imdbRating);
+  return {
+    img: j.Poster && j.Poster !== 'N/A' ? j.Poster : null,
+    overview: j.Plot && j.Plot !== 'N/A' ? j.Plot : '',
+    score: Number.isFinite(rating) ? rating : null,
+    votes: j.imdbVotes && j.imdbVotes !== 'N/A' ? Number(j.imdbVotes.replace(/,/g, '')) : null,
+    trailer: null,
+    link: j.imdbID ? `https://www.imdb.com/title/${j.imdbID}/` : null,
+    source: 'IMDb'
+  };
+}
+
 /* ── TMDB, if a key is present ──────────────────────────────────────
    The purpose-built source: a poster for essentially everything, the right one, plus a
    rating and an overview. It needs a free key, so it cannot be the default in a public
@@ -166,9 +197,14 @@ export async function look(t) {
   const run = async () => {
     let got = null, errored = false;
 
-    /* TMDB first when a key is present — it is simply better than either fallback. */
-    if (hasTmdb()) {
-      try { got = await fromTmdb(t.t, t.yr, t.k); } catch { errored = true; }
+    /* A keyed source first, since both are better than either fallback. IMDb leads
+       when its key is present because that is the number most people mean by "the
+       rating", and its poster art is the one they picture. */
+    if (hasOmdb()) {
+      try { got = await fromOmdb(t.t, t.yr, t.k); errored = false; } catch { errored = true; }
+    }
+    if (!got && hasTmdb()) {
+      try { got = await fromTmdb(t.t, t.yr, t.k); errored = false; } catch { errored = true; }
     }
 
     if (!got && t.k === 'anime' && jikanUp()) {
