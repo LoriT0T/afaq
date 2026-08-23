@@ -236,3 +236,55 @@ details.acc-d>.in b{color:var(--tx)}
   border-radius:999px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.55);max-width:88vw;text-align:center}
 pre.prompt{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px;
   font-family:var(--mono);font-size:10.5px;line-height:1.5;color:var(--tx-2);overflow-x:auto;max-height:230px;white-space:pre-wrap;word-break:break-word}
+
+/* ══════════════════════════════════════════════════════════════════
+   Posters.
+   A recommendation without one is a row of text asking you to remember whether you
+   have seen something; with one you know at a glance. The slot is always drawn, so a
+   list never reflows when the pictures arrive — a title with no poster keeps a tinted
+   initial rather than a hole.
+   ══════════════════════════════════════════════════════════════════ */
+.tt.has-po{
+  display:grid;
+  grid-template-columns:54px 46px 1fr auto;
+  gap:0 12px;
+  align-items:start;
+}
+.po{
+  width:54px;height:78px;flex:none;border-radius:7px;overflow:hidden;
+  background:var(--tint,#232323);
+  display:grid;place-items:center;
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset;
+}
+.po img{width:100%;height:100%;object-fit:cover;display:block}
+.po span{
+  font-size:22px;font-weight:700;color:rgba(255,255,255,.42);
+  font-family:var(--serif,serif);line-height:1;
+}
+.po.has-img{background:#111}
+
+.ov{
+  font-size:12px;line-height:1.5;color:var(--tx-2,#98a0ac);
+  margin-top:6px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.sb.src{margin-top:5px;opacity:.75;font-variant-numeric:tabular-nums}
+.sb.src b{color:var(--acc,#c08a4e)}
+
+.tt.has-po .go{
+  display:flex;flex-direction:column;gap:5px;align-items:stretch;
+}
+.tt.has-po .go .btn{white-space:nowrap;text-align:center;text-decoration:none}
+
+@media(max-width:430px){
+  .tt.has-po{grid-template-columns:44px 38px 1fr;gap:0 9px}
+  .po{width:44px;height:64px}
+  .tt.has-po .go{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;margin-top:8px}
+}
+
+.inp{
+  background:var(--bg-2,#0f1114);border:1px solid var(--line-2,#2f343d);
+  border-radius:9px;color:var(--tx,#eceef2);
+  font-family:inherit;font-size:13.5px;padding:9px 11px;min-width:0;
+}
+.inp:focus{outline:2px solid var(--acc,#c08a4e);outline-offset:1px}

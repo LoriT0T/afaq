@@ -1,6 +1,7 @@
 /* Āfāq — views + router. */
 import * as S from './store.js';
 import * as T from './taste.js';
+import * as ART from './art.js';
 import * as E from './engine.js';
 import { APP, AXES, ADVISORIES, CATALOGUE, DRILLS, IPSGA, LICENCE, RISK, ROADS,
          CONDITIONS, ROADKINDS, HOBBIES, HDIMS, DESTS, TAXES, ITEMKINDS,
@@ -82,6 +83,23 @@ document.addEventListener('change', e => {
   ACTS[el.dataset.chg]?.(el.dataset, el);
 });
 on('close', close);
+
+on('tmdb', () => {
+  const k = document.querySelector('#tmdb-k')?.value.trim();
+  if (!k) { toast('Paste the key first.'); return; }
+  ART.setTmdb(k);          // clears the art cache, so everything is looked up again
+  render();
+  toast('TMDB connected — posters will fill in as they load.');
+});
+
+/* Turning one down. It becomes a dropped entry, which drops it out of the pool, so the
+   ranker fills the gap on the very next render and the list cannot run dry. */
+on('skip', d => {
+  const t = E.title(d.id) || (CATALOGUE.find(x => x.id === d.id));
+  S.skip(d.id, 'not my taste');
+  render();
+  toast(`${t ? t.t : 'Skipped'} — set aside. Something else has taken its place.`);
+});
 on('go', d => { view = d.to; tripId = d.id || null; location.hash = d.to; close(); render(); });
 
 /* ---------- render ---------- */
@@ -90,6 +108,9 @@ function render(){
   const fn = ({ today:vToday, screen:vScreen, ride:vRide, craft:vCraft,
                 travel:vTravel, trip:vTrip, model:vModel })[view] || vToday;
   app.innerHTML = `<div class="wrap view">${fn()}</div>`;
+  /* Posters fill in after paint. Decoration must never be on the critical path of
+     drawing a list — the row is useful the moment it exists, picture or not. */
+  ART.hydrate(app);
   const navView = view === 'trip' ? 'travel' : view;
   nav.innerHTML = VIEWS.map(v =>
     `<button data-act="go" data-to="${v.id}" class="${v.id===navView?'on':''}"><span class="g">${v.g}</span><span class="l">${v.l}</span></button>`).join('');
@@ -165,20 +186,36 @@ function vToday(){
 let sKind = 'anime';   // his actual medium; the chips override it
 on('s-kind', d => { sKind = d.k === sKind ? '' : d.k; render(); });
 
-function ttRow(t, pred, why, entry){
+function ttRow(t, pred, why, entry, opts = {}){
   const w = entry;
   const days = w && w.status === 'queue' ? S.since(w.added) : null;
-  return `<div class="tt">
+  const a = ART.cached(t.id);
+  /* The poster slot is filled after paint. It carries what the lookup needs so the
+     hydrator can walk the DOM instead of every view threading data through. */
+  const poster = `<div class="po${a && a.img ? ' has-img' : ''}" data-art="${t.id}"
+      data-title="${esc(t.t)}" data-yr="${t.yr || ''}" data-kind="${esc(t.k)}"
+      style="--tint:${ART.tint(t.id)}">${a && a.img
+        ? `<img src="${esc(a.img)}" alt="" loading="lazy" decoding="async">`
+        : `<span>${esc((t.t || '?').trim()[0] || '?')}</span>`}</div>`;
+  return `<div class="tt has-po">
+    ${poster}
     <div class="pr">${pred != null ? n1(pred) : '—'}<small>${w && w.score != null ? 'RATED '+n1(w.score) : 'PRED'}</small></div>
     <div>
       <div class="nm">${esc(t.t)} <span class="yr">${t.yr}</span></div>
       <div class="sb">${kindPill(t.k)} ${esc(t.len||'')}${(t.adv||[]).length?` · ${esc(t.adv.join(', '))}`:''}${days!=null?` · waiting ${days}d`:''}</div>
       <div class="rz">${esc(t.why||'')}</div>
+      <div class="ov" data-ov="${t.id}">${a && a.overview
+        ? esc(a.overview.slice(0, 210)) + (a.overview.length > 210 ? '…' : '') : ''}</div>
+      <div class="sb src" data-src="${t.id}">${a && (a.score || a.source)
+        ? (a.score ? `<b>${a.score}</b>/10${a.votes ? ` · ${Math.round(a.votes/1000)}k ratings` : ''} · ` : '') + esc(a.source || '')
+        : ''}</div>
       ${why && why.length ? `<div class="sb" style="color:var(--acc);margin-top:5px">${why.map(x =>
         `${esc(x.n)} ${x.pull>0?'+':'−'}${n1(Math.abs(x.pull))}`).join(' · ')}</div>` : ''}
     </div>
     <div class="go">
-      ${!w ? `<button class="btn sm" data-act="queue" data-id="${t.id}">Queue</button>` : ''}
+      <a class="btn sm ghost" href="${ART.trailerHref(t, a)}" target="_blank" rel="noopener">Trailer</a>
+      ${!w ? `<button class="btn sm" data-act="queue" data-id="${t.id}">Queue</button>
+              <button class="btn sm ghost" data-act="skip" data-id="${t.id}">Not for me</button>` : ''}
       ${w && w.status === 'queue' ? `<button class="btn sm pri" data-act="rate-open" data-id="${w.id}">Rate</button>
         <button class="btn sm ghost" data-act="cull-open" data-id="${w.id}">Kill</button>` : ''}
       ${w && w.status === 'watching' ? `<button class="btn sm pri" data-act="rate-open" data-id="${w.id}">Rate</button>` : ''}
@@ -228,6 +265,21 @@ function vScreen(){
   ${q.length ? `<div class="sect"><div class="hd"><h3>Queue</h3><span class="aux">${q.length}${stale.length?` · ${stale.length} stale`:''}</span></div>
     ${stale.length ? `<p class="lede">${stale.length} of these have been waiting over ${E.STALE_DAYS} days. <b>Watch it or kill it with a reason.</b> A queue that only ever grows is not a plan, it is a way of avoiding a decision.</p>` : ''}
     <div class="card">${q.sort((a,b) => (b.pred??0)-(a.pred??0)).map(w => { const t = E.title(w.titleId); return t ? ttRow(t, w.pred, null, w) : ''; }).join('')}</div></div>` : ''}
+
+  ${!ART.hasTmdb() ? `<div class="card acc" data-d="screen" style="margin-top:12px">
+    <h4>Posters are running on the free fallback</h4>
+    <div class="body">Pictures and synopses come from MyAnimeList via Jikan, and Wikipedia
+    for everything else. Both are keyless, which is why they are the default — but Jikan
+    goes down for hours at a time and Wikipedia is an encyclopedia rather than an image
+    database, so a fair few titles end up with a letter instead of a poster.
+    <b>A free TMDB key fixes it properly</b>: the right poster for essentially everything,
+    plus a rating and a real overview. Two minutes at
+    <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org</a>
+    — the v3 key, not the read access token.</div>
+    <div class="row" style="margin-top:11px;gap:8px">
+      <input id="tmdb-k" class="inp grow" placeholder="TMDB v3 API key" spellcheck="false">
+      <button class="btn pri" data-act="tmdb">Use it</button>
+    </div></div>` : ''}
 
   <div class="sect" data-d="screen"><div class="hd"><h3>Recommended</h3>
     <span class="aux">${m.n < 12 ? 'exploring' : 'predicting'}</span></div>

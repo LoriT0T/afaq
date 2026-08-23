@@ -79,6 +79,19 @@ export function rate(id, score, note, mode){
   if(mode) w.mode = mode;
   save();
 }
+/* Turning a recommendation down. It becomes a dropped watch entry, which is what makes
+   it disappear from the pool — screenPool excludes anything already in `watch` — so the
+   ranker immediately offers the next best and the list never runs dry. Recorded rather
+   than merely hidden, because "not my taste" is a rating and the model should see it. */
+export function skip(titleId, reason){
+  if(S.watch.some(w => w.titleId === titleId)) return;
+  const w = { id:uid(), titleId, added:today(), status:'dropped', pred:null,
+              score:null, on:null, note:reason||'', ep:0 };
+  S.watch.unshift(w);
+  S.culled.unshift({ id:uid(), titleId, date:today(), reason:reason||'not my taste' });
+  save(); return w;
+}
+
 export function cull(id, reason){
   const w = S.watch.find(x => x.id === id); if(!w) return;
   w.status = 'dropped';
