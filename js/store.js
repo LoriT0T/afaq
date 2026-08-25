@@ -41,7 +41,10 @@ function migrate(s){
   for(const t of s.trips){ t.days ||= []; t.debrief ||= null; }
   return s;
 }
-export function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ console.warn('save failed', e); } }
+export function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }
+  catch(e){ console.warn('save failed', e); return false; }
+}
 export function state(){ return S; }
 export function reset(){ S = structuredClone(BLANK); save(); }
 export function replace(o){ S = migrate(Object.assign(structuredClone(BLANK), o)); save(); }

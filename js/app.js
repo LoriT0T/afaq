@@ -128,6 +128,9 @@ function render(){
   window.scrollTo(0,0);
 }
 addEventListener('hashchange', () => { const h = location.hash.slice(1); if(h && h !== view){ view = h; render(); } });
+/* Foregrounded after midnight: the one-thing, the queue and the trip days
+   belong to yesterday until repainted. Returning is the repaint. */
+document.addEventListener('visibilitychange', () => { if(!document.hidden) render(); });
 
 /* =====================================================================
    TODAY
@@ -416,6 +419,7 @@ on('rate-save', d => {
   const sc = Math.max(1, Math.min(10, Number($('#sc').value)||7));
   if(d.retro === '1'){ const w = S.state().watch.find(x => x.id === d.id); if(w) w.pred = null; }
   S.rate(d.id, sc, $('#nt').value.trim(), rateMode);
+  if (!S.save()) toast('Could not save the rating — storage full or blocked.');
   close(); toast(rateMode === 'comfort' ? 'Logged — held out of the fit' : 'Logged'); render();
 });
 on('mode-flip', d => {
@@ -579,7 +583,8 @@ on('ride-save', () => {
   S.logRide({ date:$('#rd').value || S.today(), mi:$('#rm').value, mins:$('#rt').value,
     kinds:s.kind, conds:s.cond, drills:s.drill, check:s.check.length>0,
     near:$('#rn').value.trim(), note:$('#ro').value.trim() });
-  close(); toast('Ride logged'); render();
+  /* An idempotent second save whose return is the truth the first swallowed. */
+  close(); toast(S.save() ? 'Ride logged' : 'Could not save — storage full or blocked.'); render();
 });
 on('maint-open', () => {
   sheet('Log maintenance', 'Chain, pressures, pads, fluid. Eight entries gates the maintenance drill.', `
