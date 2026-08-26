@@ -667,6 +667,8 @@ export const DESTS = [
     x:[.85,.60,.55,.55,.85,.60], why:'Karst mountains on the Chinese border, ridden on a small bike, four days. The best cheap motorcycle trip in the world.' },
   { id:'ladakh', n:'Ladakh & Khardung La', c:'India', days:12, cost:2, ride:3, region:'asia', when:'Jun–Sep only',
     x:[1,.50,.85,.80,.55,.95], why:'Himalayan passes above 17,000 feet on a Royal Enfield. Altitude is the real difficulty, not the road.' },
+  { id:'salalah', n:'Salalah in khareef', c:'Oman', days:6, cost:2, ride:1, region:'asia', when:'late Jun–early Sep — khareef only',
+    x:[.80,.40,.60,.55,.35,.60], why:'For three months the monsoon turns a corner of Arabia into green fog while the rest of the Gulf burns at fifty. The Arab world\u2019s only cool summer, two hours from Kuwait.' },
   { id:'kyrgyz', n:'Song-Köl & the Tien Shan', c:'Kyrgyzstan', days:10, cost:1, ride:2, region:'asia', when:'Jun–Sep',
     x:[1,.35,.95,.55,.50,.85], why:'Alpine lakes at 3,000m, yurts, and almost nobody. The Silk Road half that nobody visits.' }
 ];
@@ -687,3 +689,83 @@ export const DEBRIEF = [
   { k:'cost',   n:'Cost',    lo:'under',      hi:'well over' },
   { k:'again',  n:'The one thing you would change', kind:'text' }
 ];
+
+/* =====================================================================
+   TRIP GUIDES — the everything-page for a booked trip. A guide is
+   editorial and ships with the app; the trip record only points at it,
+   so sync stays light and the content survives any round-trip.
+   ===================================================================== */
+export const GUIDES = {
+  'salalah-khareef': {
+    title: 'Salalah — the khareef book',
+    sub: 'Everything a traveler needs, one page. Dhofar, Oman · 27 Aug – 1 Sep 2026.',
+    coords: { lat: 17.02, lon: 54.09, tz: 'Asia/Muscat' },
+
+    logistics: {
+      out:  { line: 'Jazeera J9165 · Kuwait T5 09:35 → Salalah 13:30 · Wed 27 Aug', note: 'Local times — Salalah is an hour AHEAD, the flight is ~2h55.' },
+      back: { line: 'Jazeera J9166 · Salalah 14:15 → Kuwait 16:10 · Tue 1 Sep', note: 'Be at SLL by 12:15. It is a small airport; that is enough.' },
+      stay: { line: 'Anantara Al Baleed Resort · 2× Deluxe Double, breakfast included', note: 'Voucher 838040498 · booking 1567954854113578 · beachfront, next to the Al Baleed ruins.' },
+      party: '5 travelers',
+      bags: 'Carry-on ONLY: 1×7kg each, max 55×40×20cm. Weigh at home. Khareef packing: light layers + one warm layer for fog viewpoints, rain shell, shoes with grip (wet rock everywhere), swimwear for the POOL (not the sea).',
+    },
+
+    khareef: 'From late June to early September the southwest monsoon drags a ceiling of cloud onto the Dhofar mountains. Temperatures sit at 23–27°C, drizzle comes and goes, fog rolls through the wadis, and the entire escarpment turns green — the only place on the Arabian Peninsula this happens. It is why you are going and why half the Gulf is going: expect crowds at the famous spots, go early in the morning, and never plan around a view — fog gives and takes without notice.',
+
+    car: {
+      why: 'The one thing not yet sorted. Everything worth seeing is 20–90 minutes out of town in different directions; taxis to wadis are expensive and one-way. One SUV seats five.',
+      steps: [
+        'Book ONLINE TODAY for Salalah Airport (SLL) pickup, 27 Aug ~13:45, return 1 Sep ~11:30. Khareef is peak season — walk-up counters do sell out.',
+        'Aggregators: rentalcars.com / Kayak. Desks at SLL: Europcar, Budget, Avis, Sixt, Dollar, Thrifty + local firms. A local firm is fine if reviews hold up.',
+        'Choose an SUV (Fortuner / Pajero class) — five people plus wadi tracks, wet grades and fog want clearance, not a Yaris.',
+        'Bring: Kuwaiti driving licence (valid in Oman for GCC residents/citizens — no IDP needed), passport or civil ID, and a CREDIT card in the driver’s name for the deposit block (typically 100–200 OMR).',
+        'At the counter: photograph existing damage on video before leaving the lot, confirm insurance excess, decline nothing that covers windscreen/tyres — gravel and wadi fords make those the two real risks.',
+        'Fuel is ~0.23 OMR/litre (roughly a third of UK price). Return it full; airport station is 5 minutes from the terminal.',
+      ],
+      hazards: 'Driving rules of the week: fog on the mountain roads can drop visibility to metres — slow down, fog lights, never stop in a lane. CAMELS wander onto roads and own them, especially after dark; hitting one is the classic Dhofar accident. Wadis can flash-flood — never park in a wadi bed, never cross moving water.',
+    },
+
+    places: [
+      { id: 'g-darbat',  n: 'Wadi Darbat', q: 'Wadi Darbat Salalah waterfall green khareef', why: 'THE khareef postcard — waterfalls, mist, green meadows, camels grazing. Go before 09:00 or it is a car park.', when: 'Morning, any day. 45 min east.' },
+      { id: 'g-mughsail', n: 'Mughsail Beach & Marneef Cave', q: 'Mughsail beach blowholes Salalah cliffs', why: 'Blowholes firing seawater through the cliff floor — khareef swell makes them their loudest. Dramatic 40-minute coastal drive west.', when: 'Half a day west. Blowholes strongest at high tide.' },
+      { id: 'g-fizayah', n: 'Fizayah Beach viewpoints', q: 'Fizayah beach Salalah cliffs aerial', why: 'White cliffs dropping into turquoise past Mughsail. The switchback track down wants the SUV — or just take the top viewpoints.', when: 'Add to the Mughsail day. LOOK, don’t swim.' },
+      { id: 'g-aynrazat', n: 'Ayn Razat & Ayn Athum', q: 'Ayn Razat spring gardens Salalah', why: 'Spring-fed gardens and a khareef waterfall at Athum — easy, gentle, close to town. The family-pace afternoon.', when: '20 min from the hotel. Late afternoon light.' },
+      { id: 'g-samhan', n: 'Jabal Samhan viewpoint', q: 'Jabal Samhan viewpoint Oman cliff', why: '1,800m escarpment edge above the coastal plain — when the fog opens it is the best view in southern Arabia. Leopard country.', when: 'Fog lottery — go if the morning is clear. 1h30 east.' },
+      { id: 'g-tawi', n: 'Tawi Atair sinkhole', q: 'Tawi Atair sinkhole Oman', why: 'A 200m-deep karst well in the green mountains, birdsong echoing off the walls. Pairs with Samhan.', when: 'On the Samhan road.' },
+      { id: 'g-khorrori', n: 'Khor Rori & Sumhuram', q: 'Khor Rori Sumhuram ruins Oman lagoon', why: 'Ruins of the 2,000-year-old frankincense port above a lagoon full of flamingos and camels. UNESCO, and genuinely moving.', when: 'Pairs with Wadi Darbat day. Small entry fee.' },
+      { id: 'g-baleed', n: 'Al Baleed & Frankincense Museum', q: 'Al Baleed archaeological park Salalah night', why: 'Medieval trading-city ruins NEXT DOOR to your hotel, lit beautifully after dark, with the best museum on the incense trade.', when: 'Evening stroll from the Anantara. Open late.' },
+      { id: 'g-ayoub', n: 'Tomb of Nabi Ayoub (Job)', q: 'Nabi Ayoub tomb Jabal Ittin Salalah fog', why: 'The traditional resting place of Prophet Ayoub, up in the Ittin fog. Ziyarah and the eeriest, greenest drive of the week in one.', when: '30 min up the mountain. Dress modestly; it is a shrine.' },
+      { id: 'g-dawkah', n: 'Wadi Dawkah frankincense park', q: 'Wadi Dawkah frankincense trees Oman', why: 'The UNESCO grove where Boswellia sacra actually grows — the tree that built every city you will have seen by then.', when: '40 min north, desert side — it sits OUTSIDE the fog.' },
+      { id: 'g-taqah', n: 'Taqah Castle & Mirbat', q: 'Taqah castle Oman fishing town', why: 'A restored wali’s fort in a sardine-fishing town, and Mirbat’s old merchant houses beyond it. The quiet, human-scale hour.', when: 'On the east-coast road, en route to Khor Rori.' },
+      { id: 'g-haffa', n: 'Al Haffa Souq', q: 'Al Haffa souq frankincense Salalah', why: 'THE place for frankincense (luban), bukhoor and Dhofari silver. Grades of luban: al-Hojari (greenish, best) down to al-Shazri. Smell before buying; bargain gently.', when: 'Evening. Gifts + the corniche walk.' },
+    ],
+
+    culture: [
+      'Dhofar is its own world, closer to Yemen’s Hadhramaut than to Muscat. Many locals speak Shehri/Jibbali — a pre-Arabic South Arabian language — alongside Arabic. Your Gulf Arabic works everywhere; a "salaam alaykum" opens every door.',
+      'Omanis are famously reserved and famously kind — hospitality is quieter than Kuwait’s, never louder. Accept coffee and dates if offered; right hand for everything.',
+      'Dress: modest for everyone in town (shoulders/knees covered). NEVER photograph local women, and ask men before close portraits. Drones need permits — leave it.',
+      'Khareef season is Gulf family tourism at full tide — Salalah in these weeks is festive, crowded at headline sights, and completely used to visitors. The Salalah Tourism Festival runs through the season (shows, souqs, funfair at the Ittin road festival grounds).',
+      'Friday 28 Aug is Jumu’ah — the Sultan Qaboos Mosque on As Sultan Qaboos St is the grand one; arrive early. Most sights and shops pause late Friday morning and reopen after ‘asr.',
+      'Prayer is easy everywhere: every sight has a musalla or a mosque within minutes; Salalah prayer times run ~1h behind Kuwait clock-time in these dates (Maghrib ≈ 18:50 local).',
+    ],
+
+    food: [
+      'Shuwa — lamb buried in a fire pit for a day; the Omani feast dish. Order a day ahead at traditional places.',
+      'Majboos/kabsa you know; the Dhofari twist is fresh sardine and kingfish everywhere — Taqah’s grills do it best.',
+      'The khareef street ritual: fresh coconut and small sweet bananas from the Al Haffa / Ittin road stalls, drunk in the drizzle.',
+      'Camel milk (fresh or with saffron) — sold chilled at farms and stalls; try it once.',
+      'Omani halwa with kahwa (cardamom coffee) — the hospitality pair; Dhofari halwa is darker and smokier than the northern kind.',
+      'Restaurants: Omani/Yemeni grills around As Salam St; the Anantara’s Mekong and Al Mina cover the hotel nights. Alcohol-free city outside hotel bars — exactly as you’d want.',
+    ],
+
+    practical: [
+      { k: 'Time', v: 'Oman is UTC+4 — one hour AHEAD of Kuwait. Set watches on landing; prayer apps update on their own.' },
+      { k: 'Money', v: 'Omani Rial (OMR). 1 OMR ≈ 0.79 KWD ≈ 2.0 GBP — it is one of the strongest currencies on earth; a 20 OMR note is real money. Cards work in town; carry ~30 OMR cash for stalls, entry fees, coconuts.' },
+      { k: 'Visa', v: 'None needed — Kuwaiti citizens enter with civil ID/passport under GCC rules.' },
+      { k: 'SIM', v: 'Omantel or Ooredoo tourist SIM at SLL arrivals (~5 OMR, generous data). Roaming from Kuwait works but data-buckets beat it.' },
+      { k: 'Plugs', v: 'Type G — identical to Kuwait and the UK. Bring nothing new.' },
+      { k: 'Health', v: 'No vaccinations needed. The sea is the one danger: khareef rip currents kill every season — hotel pool yes, ocean NO, no exceptions, not ankle-deep. Wet rocks at waterfalls are the second — grip shoes.' },
+      { k: 'Emergency', v: 'Royal Oman Police 9999. Sultan Qaboos Hospital Salalah is the big one. Pharmacies everywhere in town.' },
+      { k: 'Weather habit', v: 'Check the fog, not the forecast: mornings are clearest, the mountain decides by noon. Plan mountains early, town/coast afternoons.' },
+    ],
+  },
+};

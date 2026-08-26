@@ -5,7 +5,7 @@ import * as ART from './art.js';
 import * as E from './engine.js';
 import { APP, AXES, ADVISORIES, CATALOGUE, DRILLS, IPSGA, LICENCE, RISK, ROADS,
          CONDITIONS, ROADKINDS, HOBBIES, HDIMS, DESTS, TAXES, ITEMKINDS,
-         SEED, ATTENTION } from './data.js';
+         SEED, ATTENTION, GUIDES } from './data.js';
 
 const $ = (s,r=document) => r.querySelector(s);
 const app = $('#app'), nav = $('#nav');
@@ -116,13 +116,14 @@ on('go', d => { view = d.to; tripId = d.id || null; location.hash = d.to; close(
 function render(){
   S.stamp();
   const fn = ({ today:vToday, screen:vScreen, ride:vRide, craft:vCraft,
-                travel:vTravel, trip:vTrip, model:vModel })[view] || vToday;
+                travel:vTravel, trip:vTrip, guide:vGuide, model:vModel })[view] || vToday;
   app.innerHTML = `<div class="wrap view">${fn()}</div>`;
   /* Posters fill in after paint. Decoration must never be on the critical path of
      drawing a list — the row is useful the moment it exists, picture or not. */
   ART.hydrate(app);
   ART.hydratePlaces(app);
-  const navView = view === 'trip' ? 'travel' : view;
+  const navView = (view === 'trip' || view === 'guide') ? 'travel' : view;
+  if (view === 'guide') hydrateWeather();
   nav.innerHTML = VIEWS.map(v =>
     `<button data-act="go" data-to="${v.id}" class="${v.id===navView?'on':''}"><span class="g">${v.g}</span><span class="l">${v.l}</span></button>`).join('');
   window.scrollTo(0,0);
@@ -829,6 +830,7 @@ function vTrip(){
   <p class="lede">${esc(S.humanFull(t.from))} → ${esc(S.humanFull(t.to))} · ${days.length} days${dest?` · ${esc(dest.c)}`:''}${away>0?` · in ${away} days`:''}</p>
 
   <div class="btns wide">
+    ${t.guideId && GUIDES[t.guideId] ? `<button class="btn pri" data-act="go" data-to="guide" data-id="${t.id}">📖 The trip book</button>` : ''}
     <button class="btn" data-act="trip-status" data-id="${t.id}">Status: ${esc(t.status)}</button>
     ${past && !t.debrief ? `<button class="btn pri" data-act="debrief-open" data-id="${t.id}">Debrief</button>` : ''}
     <button class="btn ghost danger" data-act="trip-kill" data-id="${t.id}">Delete</button>
@@ -861,6 +863,89 @@ function vTrip(){
       <button class="btn sm ghost" style="margin-top:8px" data-act="it-open" data-id="${t.id}" data-d="${d.date}">+ Add</button>
     </div>`).join('')}
   </div>`;
+}
+
+/* =====================================================================
+   THE TRIP BOOK — one page holding everything a traveler needs to know.
+   Content lives in GUIDES (data.js); the trip record only points at it.
+   ===================================================================== */
+let WX = null;   // open-meteo cache for the session
+
+function vGuide(){
+  const t = S.trip(tripId);
+  const g = t && GUIDES[t.guideId];
+  if(!g) return `<h2 class="page">Guide</h2><div class="empty">No guide for this trip.</div>`;
+  const away = -(S.since(t.from));
+  return `
+  <div class="row" style="margin-bottom:14px"><button class="btn sm ghost" data-act="go" data-to="trip" data-id="${t.id}">← ${esc(t.name)}</button></div>
+  <h2 class="page">${esc(g.title)}</h2>
+  <p class="lede">${esc(g.sub)}${away>0?` · wheels up in ${away} day${away===1?'':'s'}`:''}</p>
+
+  <div class="card acc" data-d="travel" style="margin-top:12px"><h4>✈ Getting there and back</h4>
+    <div class="body"><b>Out:</b> ${esc(g.logistics.out.line)}<br><small>${esc(g.logistics.out.note)}</small></div>
+    <div class="body" style="margin-top:6px"><b>Back:</b> ${esc(g.logistics.back.line)}<br><small>${esc(g.logistics.back.note)}</small></div>
+    <div class="body" style="margin-top:6px"><b>Stay:</b> ${esc(g.logistics.stay.line)}<br><small>${esc(g.logistics.stay.note)}</small></div>
+    <div class="body" style="margin-top:6px"><b>Party:</b> ${esc(g.logistics.party)}</div>
+    <div class="meta" style="margin-top:6px">⚠ ${esc(g.logistics.bags)}</div></div>
+
+  <div class="sect" data-d="travel"><div class="hd"><h3>Weather now</h3><span class="aux">live · Salalah</span></div>
+    <div id="gweather" class="card"><div class="hint">Fetching the sky…</div></div>
+    <div class="card" style="margin-top:8px"><h4>What khareef is</h4><div class="body">${esc(g.khareef)}</div></div>
+  </div>
+
+  <div class="sect" data-d="travel"><div class="hd"><h3>The car — the one thing to sort</h3></div>
+    <div class="card acc"><div class="body">${esc(g.car.why)}</div>
+      <ol style="margin:10px 0 0 18px;padding:0">${g.car.steps.map(x=>`<li class="body" style="margin-bottom:7px">${esc(x)}</li>`).join('')}</ol>
+      <div class="meta" style="margin-top:8px">⚠ ${esc(g.car.hazards)}</div></div>
+  </div>
+
+  <div class="sect" data-d="travel"><div class="hd"><h3>Must-visit</h3><span class="aux">${g.places.length} places</span></div>
+    ${g.places.map(pl => `<div class="card dest" data-d="travel">
+      <div class="dest-img" data-place="${pl.id}" data-q="${esc(pl.q)}"></div>
+      <h4>${esc(pl.n)}</h4>
+      <div class="body">${esc(pl.why)}</div>
+      <div class="meta">${esc(pl.when)}</div></div>`).join('')}
+  </div>
+
+  <div class="sect" data-d="travel"><div class="hd"><h3>People & culture</h3></div>
+    <div class="card">${g.culture.map(x=>`<div class="body" style="margin-bottom:8px">◉ ${esc(x)}</div>`).join('')}</div></div>
+
+  <div class="sect" data-d="travel"><div class="hd"><h3>Eat & drink</h3></div>
+    <div class="card">${g.food.map(x=>`<div class="body" style="margin-bottom:8px">▲ ${esc(x)}</div>`).join('')}</div></div>
+
+  <div class="sect" data-d="travel"><div class="hd"><h3>Practical</h3></div>
+    <div class="card">${g.practical.map(x=>`<div class="body" style="margin-bottom:8px"><b>${esc(x.k)}:</b> ${esc(x.v)}</div>`).join('')}</div></div>`;
+}
+
+const WXCODE = { 0:'clear', 1:'mostly clear', 2:'partly cloudy', 3:'overcast', 45:'fog', 48:'fog',
+  51:'drizzle', 53:'drizzle', 55:'drizzle', 61:'light rain', 63:'rain', 65:'heavy rain',
+  80:'showers', 81:'showers', 82:'heavy showers', 95:'thunderstorm' };
+
+async function hydrateWeather(){
+  const el = $('#gweather'); if(!el) return;
+  const t = S.trip(tripId); const g = t && GUIDES[t.guideId]; if(!g) return;
+  try {
+    if(!WX){
+      const c = g.coords;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}` +
+        `&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code` +
+        `&timezone=${encodeURIComponent(c.tz)}&forecast_days=7`);
+      WX = await r.json();
+    }
+    const d = WX.daily;
+    const el2 = $('#gweather'); if(!el2) return;   // navigated away while fetching
+    el2.innerHTML = d.time.map((dt,i) => {
+      const inTrip = dt >= t.from && dt <= t.to;
+      return `<div class="body" style="display:flex;gap:10px;justify-content:space-between;${inTrip?'':'opacity:.45'}">
+        <span style="min-width:86px">${esc(new Date(dt+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}))}</span>
+        <span>${Math.round(d.temperature_2m_min[i])}–${Math.round(d.temperature_2m_max[i])}°C</span>
+        <span>${d.precipitation_probability_max[i]}% rain</span>
+        <span style="min-width:90px;text-align:right">${esc(WXCODE[d.weather_code[i]] || '—')}</span></div>`;
+    }).join('') + `<div class="hint" style="margin-top:6px">Khareef rule: the mountain decides by noon — plan fog country for mornings.</div>`;
+  } catch {
+    const el3 = $('#gweather');
+    if(el3) el3.innerHTML = '<div class="hint">Could not reach the forecast — khareef default: 23–27°C, drizzle and fog likely, mornings clearest.</div>';
+  }
 }
 
 on('trip-open', d => {
