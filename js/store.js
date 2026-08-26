@@ -181,7 +181,8 @@ export function tripDays(t){
   const n = Math.max(0, daysBetween(t.from, t.to));
   for(let i = 0; i <= Math.min(n, 60); i++){
     const d = shift(t.from, i);
-    out.push({ date:d, items:(t.days.find(x => x.date === d)?.items) || [] });
+    const src = t.days.find(x => x.date === d);
+    out.push({ date:d, items:(src?.items) || [], keep: src?.keep || '' });
   }
   return out;
 }
@@ -193,6 +194,16 @@ export function addItem(tripId, date, item){
   day.items.push(it); day.items.sort((a,b) => (a.t||'99').localeCompare(b.t||'99'));
   save(); return it;
 }
+/* The day's keeping: one line per trip day, the residue a trip leaves that is
+   neither scoreboard nor photo roll. Quoted later by the week's chronicle. */
+export function setKeep(tripId, date, text){
+  const t = trip(tripId); if(!t) return null;
+  let day = t.days.find(d => d.date === date);
+  if(!day){ day = { date, items:[] }; t.days.push(day); t.days.sort((a,b)=>a.date.localeCompare(b.date)); }
+  day.keep = String(text||'').trim();
+  save(); return day;
+}
+
 export function killItem(tripId, date, itemId){
   const d = trip(tripId)?.days.find(x => x.date === date); if(!d) return;
   d.items = d.items.filter(i => i.id !== itemId); save();

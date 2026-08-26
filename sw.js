@@ -1,5 +1,5 @@
 /* Āfāq — offline shell. Bump CACHE on any asset change. */
-const CACHE = 'afaq-v9';
+const CACHE = 'afaq-v10';
 const ASSETS = ['./','index.html','css/app.css','js/app.js','js/art.js','js/store.js','js/data.js','js/taste.js','js/engine.js','js/ladders.js',
   'manifest.webmanifest','icon-192.png','icon-512.png','icon-180.png','icon.svg'];
 

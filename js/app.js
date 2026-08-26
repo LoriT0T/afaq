@@ -863,6 +863,10 @@ function vTrip(){
           <div><button class="btn sm ghost" data-act="it-done" data-id="${t.id}" data-d="${d.date}" data-i="${i.id}">${i.done?'↺':'✓'}</button>
             <button class="btn sm ghost" data-act="it-kill" data-id="${t.id}" data-d="${d.date}" data-i="${i.id}">✕</button></div></div>`;
       }).join('') : '<div class="hint">Empty.</div>'}</div>
+      ${d.keep && d.date !== S.today() ? `<div class="body" style="margin-top:9px;color:var(--acc);font-style:italic">\u201c${esc(d.keep)}\u201d</div>` : ''}
+      ${(!past && d.date === S.today() && t.from <= S.today()) ? `<div class="row" style="gap:8px;margin-top:9px">
+        <input class="inp grow" id="keep-${d.date}" placeholder="One line worth keeping from today" value="${esc(d.keep||'')}">
+        <button class="btn sm" data-act="keep-save" data-id="${t.id}" data-d="${d.date}">Keep</button></div>` : ''}
       <button class="btn sm ghost" style="margin-top:8px" data-act="it-open" data-id="${t.id}" data-d="${d.date}">+ Add</button>
     </div>`).join('')}
   </div>`;
@@ -995,6 +999,14 @@ on('it-save', d => {
   close(); render();
 });
 on('it-done', d => { S.toggleItem(d.id, d.d, d.i); render(); });
+on('keep-save', d => {
+  const el = document.getElementById('keep-' + d.d);
+  const txt = (el && el.value || '').trim();
+  if(!txt) return toast('One line — the moment, not the itinerary.');
+  S.setKeep(d.id, d.d, txt);
+  toast('Kept. It will be in the week\u2019s s\u012brah.');
+  render();
+});
 on('it-kill', d => { S.killItem(d.id, d.d, d.i); render(); });
 on('debrief-open', d => {
   sheet('Debrief', 'Expected against actual. This is the only part of a trip log that predicts anything about the next one.', `
