@@ -230,6 +230,7 @@ function ttRow(t, pred, why, entry, opts = {}){
     <div class="go">
       <a class="btn sm ghost" href="${ART.trailerHref(t, a)}" target="_blank" rel="noopener">Trailer</a>
       ${!w ? `<button class="btn sm" data-act="queue" data-id="${t.id}">Queue</button>
+              <button class="btn sm" data-act="seen" data-id="${t.id}">Seen it</button>
               <button class="btn sm ghost" data-act="skip" data-id="${t.id}">Not for me</button>` : ''}
       ${w && w.status === 'queue' ? `<button class="btn sm pri" data-act="rate-open" data-id="${w.id}">Rate</button>
         <button class="btn sm ghost" data-act="cull-open" data-id="${w.id}">Kill</button>` : ''}
@@ -308,7 +309,7 @@ function vScreen(){
   <div class="sect" data-d="screen"><div class="hd"><h3>Recommended</h3>
     <span class="aux">${m.n < 12 ? 'exploring' : 'predicting'}</span></div>
     ${chipsetHTML(kinds, sKind?[sKind]:[], 's-kind')}
-    <p class="hint">Ranked by predicted score <b>plus an exploration bonus</b> that fades as the model warms up — while it is cold it will deliberately offer things unlike what you have rated, because an item close to what it already knows cannot move the weights. Defaulting to <b>anime</b>: that is what you actually watch, and a list that ignores it is a list you will not use.</p>
+    <p class="hint">Ranked by predicted score <b>plus an exploration bonus</b> that fades as the model warms up — while it is cold it will deliberately offer things unlike what you have rated, because an item close to what it already knows cannot move the weights. ${sKind ? `Showing <b>${esc((kinds.find(x=>x.k===sKind)||{}).n || sKind)}</b> only — anime is the default because it is what you actually watch.` : `Showing <b>every medium mixed</b> — tap a chip to narrow it.`} Already seen one? <b>Seen it</b> rates it on the spot and the model learns; <b>Not for me</b> retires it and something else takes the slot.</p>
     <div class="card" style="margin-top:10px">${recs.length ? recs.map(r => ttRow(r.it, r.pred, r.why, null)).join('')
       : '<div class="empty">Nothing left in the catalogue for this filter.</div>'}</div>
     <div class="btns wide" style="margin-top:10px"><button class="btn" data-act="custom-open">Add your own title</button></div>
@@ -323,7 +324,9 @@ function vScreen(){
         <div class="meta">${esc(r.it.len||'')}${(r.it.adv||[]).length?` · ${esc(r.it.adv.join(', '))}`:''}</div></div>
         <div class="pr" style="font-family:var(--mono);font-size:17px;color:var(--acc)">${n1(r.pred)}</div></div>
       <div class="body">${esc(r.it.why)}</div>
-      <div class="btns" style="margin-top:11px"><button class="btn sm" data-act="queue" data-id="${r.it.id}">Queue it</button></div>
+      <div class="btns" style="margin-top:11px"><button class="btn sm" data-act="queue" data-id="${r.it.id}">Queue it</button>
+        <button class="btn sm" data-act="seen" data-id="${r.it.id}">Seen it</button>
+        <button class="btn sm ghost" data-act="skip" data-id="${r.it.id}">Not for me</button></div>
     </div>`).join('')}</div>
   </div>
 
@@ -1116,7 +1119,7 @@ function vModel(){
   </div>
 
   <div class="sect"><div class="hd"><h3>Data</h3></div>
-    <div class="card"><div class="body">Everything is in this browser’s <span style="font-family:var(--mono)">localStorage</span> under <span style="font-family:var(--mono)">afaq.v1</span>. No account, no server, no sync. Export is the only backup that exists.</div>
+    <div class="card"><div class="body">Everything is in this browser’s <span style="font-family:var(--mono)">localStorage</span> under <span style="font-family:var(--mono)">afaq.v1</span>. Dīwān syncs it to your account with everything else, so it survives a device; Export is the portable copy.</div>
       <div class="btns wide" style="margin-top:11px">
         <button class="btn" data-act="export">Export</button>
         <button class="btn" data-act="import">Import</button>
